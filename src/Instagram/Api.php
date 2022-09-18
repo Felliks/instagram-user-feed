@@ -696,10 +696,10 @@ class Api
      * @throws Exception\InstagramAuthException
      * @throws Exception\InstagramFetchException
      */
-    public function getTaggedMedias(int $userId, string $endCursor = ''): TaggedMediasFeed
+    public function getTaggedMedias(int $userId, string $endCursor = '', int $limit = 12): TaggedMediasFeed
     {
         $feed = new JsonTaggedMediasDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($userId, $endCursor);
+        $data = $feed->fetchData($userId, $endCursor, $limit);
 
         $hydrator = new MediaHydrator();
         return $hydrator->hydrateTaggedMedias($data);

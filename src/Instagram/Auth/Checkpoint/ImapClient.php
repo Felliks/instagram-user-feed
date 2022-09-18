@@ -103,7 +103,7 @@ class ImapClient
         $resource  = @imap_open('{' . $this->getServer() . '/' . $this->getConnectionType() . '/ssl}INBOX', $this->getLogin(), $this->getPassword());
 
         if (!$resource) {
-          throw new InstagramAuthException('Unable to open IMAP stream.');
+            throw new InstagramAuthException('Unable to open IMAP stream.');
         }
 
         $numberMax = imap_num_msg($resource);
@@ -129,7 +129,7 @@ class ImapClient
                 if (
                     (property_exists($headers, 'senderaddress') &&
                         $headers->senderaddress === 'Instagram <security@mail.instagram.com>')
-                    || $headers->from->host === 'mail.instagram.com'
+                    || $headers->from[0]->host === 'mail.instagram.com'
                 ) {
                     $isMailFromInstagram = true;
                 }

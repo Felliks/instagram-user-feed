@@ -17,11 +17,11 @@ class JsonTaggedMediasDataFeed extends AbstractDataFeed
      *
      * @throws InstagramFetchException
      */
-    public function fetchData(int $id, string $endCursor = ''): \StdClass
+    public function fetchData(int $id, string $endCursor = '', int $limit = 12): \StdClass
     {
         $variables = [
             'id'    => $id,
-            'first' => 12,
+            'first' => $limit,
             'after' => $endCursor,
         ];
 
