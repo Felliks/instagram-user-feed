@@ -38,13 +38,13 @@ class JsonFollowingDataFeed extends AbstractDataFeed
      *
      * @throws InstagramFetchException
      */
-    public function fetchMoreData(int $id, string $endCursor): \StdClass
+    public function fetchMoreData(int $id, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): \StdClass
     {
         $variables = [
             'id'           => $id,
             'include_reel' => true,
             'fetch_mutual' => false,
-            'first'        => InstagramHelper::PAGINATION_DEFAULT,
+            'first'        => $limit,
             'after'        => $endCursor
         ];
 
