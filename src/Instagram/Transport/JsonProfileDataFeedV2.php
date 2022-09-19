@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Instagram\Transport;
 
 use Instagram\Exception\InstagramFetchException;
+use Instagram\Exception\InstagramNotFoundException;
 use Instagram\Utils\InstagramHelper;
+use GuzzleHttp\Exception\ClientException;
 
 class JsonProfileDataFeedV2 extends AbstractDataFeed
 {
@@ -15,6 +17,7 @@ class JsonProfileDataFeedV2 extends AbstractDataFeed
      * @return \StdClass
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     public function fetchData(string $username): \StdClass
     {
@@ -24,12 +27,18 @@ class JsonProfileDataFeedV2 extends AbstractDataFeed
             $data = $this->fetchJsonDataFeed($endpoint, [
                 'x-ig-app-id' => 936619743392459,
             ]);
+        } catch (ClientException $e) {
+            if ($e->getResponse()->getStatusCode() === 404) {
+                throw new InstagramNotFoundException('Response code 404.');
+            }
+
+            throw new InstagramFetchException('Error: ' . $e->getMessage());
         } catch (\Exception $e) {
             throw new InstagramFetchException('Error: ' . $e->getMessage());
         }
 
         if (!$data->data->user) {
-            throw new InstagramFetchException('Instagram id ' . $username . ' does not exist.');
+            throw new InstagramNotFoundException('Instagram id ' . $username . ' does not exist.');
         }
 
         return $data->data->user;

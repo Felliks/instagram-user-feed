@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Instagram\Transport;
 
 use Instagram\Exception\InstagramFetchException;
+use Instagram\Exception\InstagramNotFoundException;
 use Instagram\Utils\InstagramHelper;
 
 class JsonFollowerDataFeed extends AbstractDataFeed
@@ -15,6 +16,7 @@ class JsonFollowerDataFeed extends AbstractDataFeed
      * @return \StdClass
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     public function fetchData(int $id): \StdClass
     {
@@ -37,6 +39,7 @@ class JsonFollowerDataFeed extends AbstractDataFeed
      * @return \StdClass
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     public function fetchMoreData(int $id, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): \StdClass
     {
@@ -59,6 +62,7 @@ class JsonFollowerDataFeed extends AbstractDataFeed
      *
      * @return \StdClass
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     private function fetch(string $endpoint, int $id): \StdClass
     {

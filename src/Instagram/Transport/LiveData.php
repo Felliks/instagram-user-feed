@@ -7,6 +7,7 @@ namespace Instagram\Transport;
 use GuzzleHttp\Exception\ClientException;
 use Instagram\Exception\InstagramFetchException;
 use Instagram\Utils\{Endpoints, OptionHelper, CacheResponse};
+use Instagram\Exception\InstagramNotFoundException;
 
 
 class LiveData extends AbstractDataFeed
@@ -18,6 +19,7 @@ class LiveData extends AbstractDataFeed
      *
      * @throws InstagramFetchException
      * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws InstagramNotFoundException
      */
     public function fetchData(string $username): \StdClass
     {
@@ -40,6 +42,10 @@ class LiveData extends AbstractDataFeed
         }
 
         CacheResponse::setResponse($res);
+
+        if ($res->getStatusCode() === 404) {
+            throw new InstagramNotFoundException('Response code 404.');
+        }
 
         $data = (string)$res->getBody();
         $data = json_decode($data);

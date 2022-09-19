@@ -7,6 +7,7 @@ namespace Instagram\Transport;
 use GuzzleHttp\Cookie\SetCookie;
 use GuzzleHttp\Exception\ClientException;
 use Instagram\Exception\InstagramFetchException;
+use Instagram\Exception\InstagramNotFoundException;
 use Instagram\Utils\{Endpoints, OptionHelper, CacheResponse};
 
 class JsonProfileAlternativeDataFeed extends AbstractDataFeed

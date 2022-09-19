@@ -5,18 +5,20 @@ declare(strict_types=1);
 namespace Instagram\Transport;
 
 use Instagram\Exception\InstagramFetchException;
+use Instagram\Exception\InstagramNotFoundException;
 use Instagram\{Model\Profile, Utils\InstagramHelper};
 
 class JsonMediasDataFeed extends AbstractDataFeed
 {
     /**
      * @param Profile $instagramProfile
-     * @param int     $limit
-     * @param string  $queryHash
+     * @param int $limit
+     * @param string $queryHash
      *
      * @return \StdClass
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     public function fetchData(Profile $instagramProfile, int $limit, string $queryHash = InstagramHelper::QUERY_HASH_MEDIAS): \StdClass
     {
