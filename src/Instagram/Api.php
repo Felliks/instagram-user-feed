@@ -477,10 +477,10 @@ class Api
      * @throws Exception\InstagramAuthException
      * @throws Exception\InstagramFetchException
      */
-    public function getMoreFollowers(int $id, string $endCursor): FollowerFeed
+    public function getMoreFollowers(int $id, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): FollowerFeed
     {
         $feed = new JsonFollowerDataFeed($this->client, $this->session);
-        $data = $feed->fetchMoreData($id, $endCursor);
+        $data = $feed->fetchMoreData($id, $endCursor, $limit);
 
         $hydrator = new FollowerHydrator();
         $hydrator->hydrateFollowerFeed($data);
@@ -518,10 +518,10 @@ class Api
      * @throws Exception\InstagramAuthException
      * @throws Exception\InstagramFetchException
      */
-    public function getMoreFollowings(int $id, string $endCursor): FollowingFeed
+    public function getMoreFollowings(int $id, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): FollowingFeed
     {
         $feed = new JsonFollowingDataFeed($this->client, $this->session);
-        $data = $feed->fetchMoreData($id, $endCursor);
+        $data = $feed->fetchMoreData($id, $endCursor, $limit);
 
         $hydrator = new FollowingHydrator();
         $hydrator->hydrateFollowingFeed($data);
