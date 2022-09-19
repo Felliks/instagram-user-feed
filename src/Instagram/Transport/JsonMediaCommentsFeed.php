@@ -42,11 +42,11 @@ class JsonMediaCommentsFeed extends AbstractDataFeed
      * @throws InstagramFetchException
      * @throws InstagramNotFoundException
      */
-    public function fetchMoreData(string $code, string $endCursor): \StdClass
+    public function fetchMoreData(string $code, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): \StdClass
     {
         $variables = [
             'shortcode' => $code,
-            'first'     => InstagramHelper::PAGINATION_DEFAULT,
+            'first'     => $limit,
             'after'     => $endCursor,
         ];
 

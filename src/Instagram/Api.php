@@ -309,11 +309,12 @@ class Api
      *
      * @throws Exception\InstagramAuthException
      * @throws Exception\InstagramFetchException
+     * @throws Exception\InstagramNotFoundException
      */
-    public function getMoreMediaComments(string $mediaCode, string $endCursor): MediaComments
+    public function getMoreMediaComments(string $mediaCode, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): MediaComments
     {
         $feed = new JsonMediaCommentsFeed($this->client, $this->session);
-        $data = $feed->fetchMoreData($mediaCode, $endCursor);
+        $data = $feed->fetchMoreData($mediaCode, $endCursor, $limit);
 
         $hydrator = new MediaCommentsHydrator();
         $hydrator->hydrateMediaComments($data);
