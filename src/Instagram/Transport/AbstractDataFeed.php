@@ -7,7 +7,10 @@ namespace Instagram\Transport;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ClientException;
 use Instagram\Auth\Session;
-use Instagram\Exception\{InstagramAuthException, InstagramFetchException, InstagramNotFoundException};
+use Instagram\Exception\{InstagramAuthException,
+    InstagramChallengeException,
+    InstagramFetchException,
+    InstagramNotFoundException};
 use Instagram\Utils\{OptionHelper, InstagramHelper, CacheResponse};
 
 abstract class AbstractDataFeed
@@ -68,8 +71,13 @@ abstract class AbstractDataFeed
             throw new InstagramFetchException('Error: ' . $e->getMessage());
         }
 
-        $data = (string)$res->getBody();
-        $data = json_decode($data);
+        $body = (string)$res->getBody();
+
+        if (str_contains('https://www.instagram.com/challenge/?next=', $body)) {
+            throw new InstagramChallengeException();
+        }
+
+        $data = json_decode($body);
 
         if ($data === null) {
             throw new InstagramFetchException(json_last_error_msg());
@@ -116,8 +124,13 @@ abstract class AbstractDataFeed
             throw new InstagramFetchException('Error: ' . $e->getMessage());
         }
 
-        $data = (string)$res->getBody();
-        $data = json_decode($data);
+        $body = (string)$res->getBody();
+
+        if (str_contains('https://www.instagram.com/challenge/?next=', $body)) {
+            throw new InstagramChallengeException();
+        }
+
+        $data = json_decode($body);
 
         if ($data === null) {
             throw new InstagramFetchException(json_last_error_msg());

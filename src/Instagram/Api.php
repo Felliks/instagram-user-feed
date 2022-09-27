@@ -8,7 +8,7 @@ use GuzzleHttp\{Client, ClientInterface};
 use Instagram\Utils\CacheHelper;
 use GuzzleHttp\Cookie\{SetCookie, CookieJar};
 use Instagram\Auth\{Checkpoint\ImapClient, Login, Session};
-use Instagram\Exception\{InstagramException, InstagramAuthException};
+use Instagram\Exception\{InstagramChallengeException, InstagramException, InstagramAuthException};
 use Instagram\Hydrator\{LocationHydrator,
     MediaHydrator,
     MediaCommentsHydrator,
@@ -66,36 +66,17 @@ use Instagram\Utils\{InstagramHelper, OptionHelper};
 
 class Api
 {
-    /**
-     * @var CacheItemPoolInterface
-     */
-    protected $cachePool;
+    protected ?Session $session = null;
 
-    /**
-     * @var ClientInterface
-     */
-    protected $client;
-
-    /**
-     * @var Session
-     */
-    protected $session = null;
-
-    /**
-     * @var int
-     */
-    protected $challengeDelay;
-
-    /**
-     * @param CacheItemPoolInterface $cachePool
-     * @param ClientInterface|null $client
-     * @param int|null $challengeDelay
-     */
-    public function __construct(CacheItemPoolInterface $cachePool = null, ClientInterface $client = null, ?int $challengeDelay = 3)
-    {
-        $this->cachePool = $cachePool;
+    public function __construct(
+        protected string                  $username,
+        protected string                  $password,
+        protected CacheItemPoolInterface  $cachePool,
+        protected ?ClientInterface        $client = null,
+        protected ?ImapClient             $imapClient = null,
+        protected ?int                    $challengeDelay = 3
+    ) {
         $this->client = $client ?: new Client();
-        $this->challengeDelay = $challengeDelay;
     }
 
     /**
@@ -146,16 +127,16 @@ class Api
      * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function login(string $username, string $password, ?ImapClient $imapClient = null): void
+    public function login(): void
     {
-        $login = new Login($this->client, $username, $password, $imapClient, $this->challengeDelay);
+        $login = new Login($this->client, $this->username, $this->password, $this->imapClient, $this->challengeDelay);
 
         if ( !($this->cachePool instanceof CacheItemPoolInterface) ) {
             throw new InstagramAuthException('You must set cachePool / login with cookies, example: \n$cachePool = new \Symfony\Component\Cache\Adapter\FilesystemAdapter("Instagram", 0, __DIR__ . "/../cache"); \n$api = new \Instagram\Api($cachePool);');
         }
 
         // fetch previous session and re-use it
-        $sessionData = $this->cachePool->getItem(Session::SESSION_KEY . '.' . CacheHelper::sanitizeUsername($username));
+        $sessionData = $this->cachePool->getItem(Session::SESSION_KEY . '.' . CacheHelper::sanitizeUsername($this->username));
         $cookies = $sessionData->get();
 
         if ($cookies instanceof CookieJar) {
@@ -164,8 +145,8 @@ class Api
 
             // Session expired (should never happened, Instagram TTL is ~ 1 year)
             if ($session->getExpires() < time()) {
-                $this->logout($username);
-                $this->login($username, $password, $imapClient);
+                $this->logout();
+                $this->login();
             }
 
         } else {
@@ -182,30 +163,32 @@ class Api
      *
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function logout(?string $username = ''): void
+    public function logout(): void
     {
-        $username = CacheHelper::sanitizeUsername($username);
+        $username = CacheHelper::sanitizeUsername($this->username);
 
         $this->cachePool->deleteItem(Session::SESSION_KEY . ($username !== '' ? '.' . $username : ''));
     }
 
     /**
-     * @param Profile $instagramProfile
+     * @param Profile $profile
      * @param int $limit
      *
      * @return Profile
      *
      * @throws InstagramException
      */
-    public function getMoreMedias(Profile $instagramProfile, int $limit = InstagramHelper::PAGINATION_DEFAULT): Profile
+    public function getMoreMedias(Profile $profile, int $limit = InstagramHelper::PAGINATION_DEFAULT): Profile
     {
-        $feed = new JsonMediasDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($instagramProfile, $limit);
+        return $this->fetch(function () use ($profile, $limit) {
+            $feed = new JsonMediasDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($profile, $limit);
 
-        $hydrator = new ProfileHydrator($instagramProfile);
-        $hydrator->hydrateMedias($data);
+            $hydrator = new ProfileHydrator($profile);
+            $hydrator->hydrateMedias($data);
 
-        return $hydrator->getProfile();
+            return $hydrator->getProfile();
+        });
     }
 
     /**
@@ -217,14 +200,16 @@ class Api
      */
     public function getHashtag(string $hashtag): Hashtag
     {
-        $feed = new JsonHashtagDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($hashtag);
+        return $this->fetch(function () use ($hashtag) {
+            $feed = new JsonHashtagDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($hashtag);
 
-        $hydrator = new HashtagHydrator();
-        $hydrator->hydrateHashtag($data);
-        $hydrator->hydrateMedias($data);
+            $hydrator = new HashtagHydrator();
+            $hydrator->hydrateHashtag($data);
+            $hydrator->hydrateMedias($data);
 
-        return $hydrator->getHashtag();
+            return $hydrator->getHashtag();
+        });
     }
 
     /**
@@ -237,14 +222,16 @@ class Api
      */
     public function getMoreHashtagMedias(string $hashtag, string $endCursor): Hashtag
     {
-        $feed = new JsonHashtagDataFeed($this->client, $this->session);
-        $data = $feed->fetchMoreData($hashtag, $endCursor);
+        return $this->fetch(function () use ($hashtag, $endCursor) {
+            $feed = new JsonHashtagDataFeed($this->client, $this->session);
+            $data = $feed->fetchMoreData($hashtag, $endCursor);
 
-        $hydrator = new HashtagHydrator();
-        $hydrator->hydrateHashtag($data);
-        $hydrator->hydrateMedias($data);
+            $hydrator = new HashtagHydrator();
+            $hydrator->hydrateHashtag($data);
+            $hydrator->hydrateMedias($data);
 
-        return $hydrator->getHashtag();
+            return $hydrator->getHashtag();
+        });
     }
 
     /**
@@ -292,13 +279,15 @@ class Api
      */
     public function getMediaComments(string $mediaCode, int $limit = InstagramHelper::PAGINATION_DEFAULT): MediaComments
     {
-        $feed = new JsonMediaCommentsFeed($this->client, $this->session);
-        $data = $feed->fetchData($mediaCode, $limit);
+        return $this->fetch(function () use ($mediaCode, $limit) {
+            $feed = new JsonMediaCommentsFeed($this->client, $this->session);
+            $data = $feed->fetchData($mediaCode, $limit);
 
-        $hydrator = new MediaCommentsHydrator();
-        $hydrator->hydrateMediaComments($data);
+            $hydrator = new MediaCommentsHydrator();
+            $hydrator->hydrateMediaComments($data);
 
-        return $hydrator->getMediaComments();
+            return $hydrator->getMediaComments();
+        });
     }
 
     /**
@@ -313,13 +302,15 @@ class Api
      */
     public function getMoreMediaComments(string $mediaCode, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): MediaComments
     {
-        $feed = new JsonMediaCommentsFeed($this->client, $this->session);
-        $data = $feed->fetchMoreData($mediaCode, $endCursor, $limit);
+        return $this->fetch(function () use ($mediaCode, $endCursor, $limit) {
+            $feed = new JsonMediaCommentsFeed($this->client, $this->session);
+            $data = $feed->fetchMoreData($mediaCode, $endCursor, $limit);
 
-        $hydrator = new MediaCommentsHydrator();
-        $hydrator->hydrateMediaComments($data);
+            $hydrator = new MediaCommentsHydrator();
+            $hydrator->hydrateMediaComments($data);
 
-        return $hydrator->getMediaComments();
+            return $hydrator->getMediaComments();
+        });
     }
 
     /**
@@ -347,13 +338,15 @@ class Api
      */
     public function getStories(int $userId): ProfileStory
     {
-        $feed = new JsonStoriesDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($userId);
+        return $this->fetch(function () use ($userId) {
+            $feed = new JsonStoriesDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($userId);
 
-        $hydrator = new StoriesHydrator();
-        $hydrator->hydrateStories($data);
+            $hydrator = new StoriesHydrator();
+            $hydrator->hydrateStories($data);
 
-        return $hydrator->getStories();
+            return $hydrator->getStories();
+        });
     }
 
     /**
@@ -366,13 +359,15 @@ class Api
      */
     public function getStoryHighlightsFolder(int $userId): StoryHighlights
     {
-        $feed = new JsonStoryHighlightsFoldersDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($userId);
+        return $this->fetch(function () use ($userId) {
+            $feed = new JsonStoryHighlightsFoldersDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($userId);
 
-        $hydrator = new StoryHighlightsHydrator();
-        $hydrator->hydrateFolders($data);
+            $hydrator = new StoryHighlightsHydrator();
+            $hydrator->hydrateFolders($data);
 
-        return $hydrator->getHighlights();
+            return $hydrator->getHighlights();
+        });
     }
 
     /**
@@ -385,13 +380,15 @@ class Api
      */
     public function getStoriesOfHighlightsFolder(StoryHighlightsFolder $folder): StoryHighlightsFolder
     {
-        $feed = new JsonStoryHighlightsStoriesDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($folder);
+        return $this->fetch(function () use ($folder) {
+            $feed = new JsonStoryHighlightsStoriesDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($folder);
 
-        $hydrator = new StoryHighlightsHydrator();
-        $hydrator->hydrateHighLights($folder, $data);
+            $hydrator = new StoryHighlightsHydrator();
+            $hydrator->hydrateHighLights($folder, $data);
 
-        return $hydrator->getFolder();
+            return $hydrator->getFolder();
+        });
     }
 
     /**
@@ -404,13 +401,15 @@ class Api
      */
     public function getMediaDetailed(Media $media): MediaDetailed
     {
-        $feed = new JsonMediaDetailedDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($media);
+        return $this->fetch(function () use ($media) {
+            $feed = new JsonMediaDetailedDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($media);
 
-        $hydrator = new MediaHydrator();
-        $media = $hydrator->hydrateMediaDetailed($data);
+            $hydrator = new MediaHydrator();
+            $media = $hydrator->hydrateMediaDetailed($data);
 
-        return $media;
+            return $media;
+        });
     }
 
     /**
@@ -423,13 +422,15 @@ class Api
      */
     public function getMediaDetailedByShortCode(Media $media): MediaDetailed
     {
-        $feed = new JsonMediaDetailedByShortCodeDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($media);
+        return $this->fetch(function () use ($media) {
+            $feed = new JsonMediaDetailedByShortCodeDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($media);
 
-        $hydrator = new MediaHydrator();
-        $media = $hydrator->hydrateMediaDetailed($data);
+            $hydrator = new MediaHydrator();
+            $media = $hydrator->hydrateMediaDetailed($data);
 
-        return $media;
+            return $media;
+        });
     }
 
     /**
@@ -443,10 +444,12 @@ class Api
      */
     public function getProfileById(int $id): Profile
     {
-        $feed = new JsonProfileDataFeed($this->client, $this->session);
-        $userName = $feed->fetchData($id);
+        return $this->fetch(function () use ($id) {
+            $feed = new JsonProfileDataFeed($this->client, $this->session);
+            $userName = $feed->fetchData($id);
 
-        return $this->getProfile($userName);
+            return $this->getProfile($userName);
+        });
     }
 
     /**
@@ -459,14 +462,16 @@ class Api
      */
     public function getFollowers(int $id): FollowerFeed
     {
-        $feed = new JsonFollowerDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($id);
+        return $this->fetch(function () use ($id) {
+            $feed = new JsonFollowerDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($id);
 
-        $hydrator = new FollowerHydrator();
-        $hydrator->hydrateFollowerFeed($data);
-        $hydrator->hydrateUsers($data);
+            $hydrator = new FollowerHydrator();
+            $hydrator->hydrateFollowerFeed($data);
+            $hydrator->hydrateUsers($data);
 
-        return $hydrator->getFollowers();
+            return $hydrator->getFollowers();
+        });
     }
 
     /**
@@ -480,14 +485,16 @@ class Api
      */
     public function getMoreFollowers(int $id, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): FollowerFeed
     {
-        $feed = new JsonFollowerDataFeed($this->client, $this->session);
-        $data = $feed->fetchMoreData($id, $endCursor, $limit);
+        return $this->fetch(function () use ($id, $endCursor, $limit) {
+            $feed = new JsonFollowerDataFeed($this->client, $this->session);
+            $data = $feed->fetchMoreData($id, $endCursor, $limit);
 
-        $hydrator = new FollowerHydrator();
-        $hydrator->hydrateFollowerFeed($data);
-        $hydrator->hydrateUsers($data);
+            $hydrator = new FollowerHydrator();
+            $hydrator->hydrateFollowerFeed($data);
+            $hydrator->hydrateUsers($data);
 
-        return $hydrator->getFollowers();
+            return $hydrator->getFollowers();
+        });
     }
 
     /**
@@ -500,14 +507,16 @@ class Api
      */
     public function getFollowings(int $id): FollowingFeed
     {
-        $feed = new JsonFollowingDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($id);
+        return $this->fetch(function () use ($id) {
+            $feed = new JsonFollowingDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($id);
 
-        $hydrator = new FollowingHydrator();
-        $hydrator->hydrateFollowingFeed($data);
-        $hydrator->hydrateUsers($data);
+            $hydrator = new FollowingHydrator();
+            $hydrator->hydrateFollowingFeed($data);
+            $hydrator->hydrateUsers($data);
 
-        return $hydrator->getFollowings();
+            return $hydrator->getFollowings();
+        });
     }
 
     /**
@@ -521,14 +530,16 @@ class Api
      */
     public function getMoreFollowings(int $id, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): FollowingFeed
     {
-        $feed = new JsonFollowingDataFeed($this->client, $this->session);
-        $data = $feed->fetchMoreData($id, $endCursor, $limit);
+        return $this->fetch(function () use ($id, $endCursor, $limit) {
+            $feed = new JsonFollowingDataFeed($this->client, $this->session);
+            $data = $feed->fetchMoreData($id, $endCursor, $limit);
 
-        $hydrator = new FollowingHydrator();
-        $hydrator->hydrateFollowingFeed($data);
-        $hydrator->hydrateUsers($data);
+            $hydrator = new FollowingHydrator();
+            $hydrator->hydrateFollowingFeed($data);
+            $hydrator->hydrateUsers($data);
 
-        return $hydrator->getFollowings();
+            return $hydrator->getFollowings();
+        });
     }
 
     /**
@@ -541,8 +552,11 @@ class Api
      */
     public function follow(int $accountId): string
     {
-        $request = new FollowUnfollow($this->client, $this->session);
-        return $request->follow($accountId);
+        return $this->fetch(function () use ($accountId) {
+            $request = new FollowUnfollow($this->client, $this->session);
+
+            return $request->follow($accountId);
+        });
     }
 
     /**
@@ -555,8 +569,11 @@ class Api
      */
     public function unfollow(int $accountId): string
     {
-        $request = new FollowUnfollow($this->client, $this->session);
-        return $request->unfollow($accountId);
+        return $this->fetch(function () use ($accountId) {
+            $request = new FollowUnfollow($this->client, $this->session);
+
+            return $request->unfollow($accountId);
+        });
     }
 
     /**
@@ -569,8 +586,11 @@ class Api
      */
     public function like(int $postId): string
     {
-        $request = new LikeUnlike($this->client, $this->session);
-        return $request->like($postId);
+        return $this->fetch(function () use ($postId) {
+            $request = new LikeUnlike($this->client, $this->session);
+
+            return $request->like($postId);
+        });
     }
 
     /**
@@ -583,8 +603,11 @@ class Api
      */
     public function unlike(int $postId): string
     {
-        $request = new LikeUnlike($this->client, $this->session);
-        return $request->unlike($postId);
+        return $this->fetch(function () use ($postId) {
+            $request = new LikeUnlike($this->client, $this->session);
+
+            return $request->unlike($postId);
+        });
     }
 
     /**
@@ -598,14 +621,16 @@ class Api
      */
     public function getLocation(int $locationId): Location
     {
-        $feed = new LocationData($this->client, $this->session);
-        $data = $feed->fetchData($locationId);
+        return $this->fetch(function () use ($locationId) {
+            $feed = new LocationData($this->client, $this->session);
+            $data = $feed->fetchData($locationId);
 
-        $hydrator = new LocationHydrator();
-        $hydrator->hydrateLocation($data);
-        $hydrator->hydrateMedias($data);
+            $hydrator = new LocationHydrator();
+            $hydrator->hydrateLocation($data);
+            $hydrator->hydrateMedias($data);
 
-        return $hydrator->getLocation();
+            return $hydrator->getLocation();
+        });
     }
 
     /**
@@ -618,14 +643,16 @@ class Api
      */
     public function getMoreLocationMedias(int $locationId, string $endCursor): Location
     {
-        $feed = new LocationData($this->client, $this->session);
-        $data = $feed->fetchMoreData($locationId, $endCursor);
+        return $this->fetch(function () use ($locationId, $endCursor) {
+            $feed = new LocationData($this->client, $this->session);
+            $data = $feed->fetchMoreData($locationId, $endCursor);
 
-        $hydrator = new LocationHydrator();
-        $hydrator->hydrateLocation($data);
-        $hydrator->hydrateMedias($data);
+            $hydrator = new LocationHydrator();
+            $hydrator->hydrateLocation($data);
+            $hydrator->hydrateMedias($data);
 
-        return $hydrator->getLocation();
+            return $hydrator->getLocation();
+        });
     }
 
     /**
@@ -639,13 +666,15 @@ class Api
      */
     public function getLive(string $username): Live
     {
-        $feed = new LiveData($this->client, $this->session);
-        $data = $feed->fetchData($username);
+        return $this->fetch(function () use ($username) {
+            $feed = new LiveData($this->client, $this->session);
+            $data = $feed->fetchData($username);
 
-        $hydrator = new LiveHydrator();
-        $hydrator->liveBaseHydrator($data);
+            $hydrator = new LiveHydrator();
+            $hydrator->liveBaseHydrator($data);
 
-        return $hydrator->getLive();
+            return $hydrator->getLive();
+        });
     }
 
     /**
@@ -660,32 +689,37 @@ class Api
      */
     public function getReels(int $userId, string $maxId = null): ReelsFeed
     {
-        $feed = new ReelsDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($userId, $maxId);
+        return $this->fetch(function () use ($userId, $maxId) {
+            $feed = new ReelsDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($userId, $maxId);
 
-        $hydrator = new ReelsFeedHydrator();
-        $hydrator->hydrateReelsFeed($data);
+            $hydrator = new ReelsFeedHydrator();
+            $hydrator->hydrateReelsFeed($data);
 
-        return $hydrator->getReelsFeed();
+            return $hydrator->getReelsFeed();
+        });
     }
 
     /**
-     * @param Profile $instagramProfile
+     * @param Profile $profile
      * @param int $limit
      *
      * @return Profile
      *
      * @throws InstagramException
      */
-    public function getMoreIgtvs(Profile $instagramProfile, int $limit = InstagramHelper::PAGINATION_DEFAULT): Profile
+    public function getMoreIgtvs(Profile $profile, int $limit = InstagramHelper::PAGINATION_DEFAULT): Profile
     {
-        $feed = new JsonMediasDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($instagramProfile, $limit, InstagramHelper::QUERY_HASH_IGTVS);
+        return $this->fetch(function () use ($profile, $limit) {
 
-        $hydrator = new ProfileHydrator($instagramProfile);
-        $hydrator->hydrateIgtvs($data);
+            $feed = new JsonMediasDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($profile, $limit, InstagramHelper::QUERY_HASH_IGTVS);
 
-        return $hydrator->getProfile();
+            $hydrator = new ProfileHydrator($profile);
+            $hydrator->hydrateIgtvs($data);
+
+            return $hydrator->getProfile();
+        });
     }
 
     /**
@@ -699,11 +733,13 @@ class Api
      */
     public function getTaggedMedias(int $userId, string $endCursor = '', int $limit = 12): TaggedMediasFeed
     {
-        $feed = new JsonTaggedMediasDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($userId, $endCursor, $limit);
+        return $this->fetch(function () use ($userId, $endCursor, $limit) {
+            $feed = new JsonTaggedMediasDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($userId, $endCursor, $limit);
 
-        $hydrator = new MediaHydrator();
-        return $hydrator->hydrateTaggedMedias($data);
+            $hydrator = new MediaHydrator();
+            return $hydrator->hydrateTaggedMedias($data);
+        });
     }
 
     /**
@@ -717,13 +753,15 @@ class Api
      */
     public function getProfileAlternative(int $userId): Profile
     {
-        $feed = new JsonProfileAlternativeDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($userId);
+        return $this->fetch(function () use ($userId) {
+            $feed = new JsonProfileAlternativeDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($userId);
 
-        $hydrator = new ProfileAlternativeHydrator();
-        $hydrator->hydrateProfile($data);
+            $hydrator = new ProfileAlternativeHydrator();
+            $hydrator->hydrateProfile($data);
 
-        return $hydrator->getProfile();
+            return $hydrator->getProfile();
+        });
     }
 
     /**
@@ -737,8 +775,11 @@ class Api
      */
     public function commentPost(int $postId, string $message): string
     {
-        $request = new CommentPost($this->client, $this->session);
-        return $request->comment($postId, $message);
+        return $this->fetch(function () use ($postId, $message) {
+            $request = new CommentPost($this->client, $this->session);
+
+            return $request->comment($postId, $message);
+        });
     }
 
     /**
@@ -768,13 +809,15 @@ class Api
      */
     public function getTimeline(string $maxId = null): TimelineFeed
     {
-        $feed = new TimelineDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($maxId);
+        return $this->fetch(function () use ($maxId) {
+            $feed = new TimelineDataFeed($this->client, $this->session);
+            $data = $feed->fetchData($maxId);
 
-        $hydrator = new TimelineFeedHydrator();
-        $hydrator->hydrateTimelineFeed($data);
+            $hydrator = new TimelineFeedHydrator();
+            $hydrator->hydrateTimelineFeed($data);
 
-        return $hydrator->getTimelineFeed();
+            return $hydrator->getTimelineFeed();
+        });
     }
       
     /**
@@ -786,14 +829,28 @@ class Api
      */
     public function getProfile(string $user): Profile
     {
-        $feed = new JsonProfileDataFeedV2($this->client, $this->session);
-        $data = $feed->fetchData($user);
+        return $this->fetch(function () use ($user) {
+            $feed = new JsonProfileDataFeedV2($this->client, $this->session);
+            $data = $feed->fetchData($user);
 
-        $hydrator = new ProfileHydrator();
-        $hydrator->hydrateProfile($data);
-        $hydrator->hydrateMedias($data);
-        $hydrator->hydrateIgtvs($data);
+            $hydrator = new ProfileHydrator();
+            $hydrator->hydrateProfile($data);
+            $hydrator->hydrateMedias($data);
+            $hydrator->hydrateIgtvs($data);
 
-        return $hydrator->getProfile();
+            return $hydrator->getProfile();
+        });
+    }
+
+    private function fetch(callable $callback)
+    {
+        try {
+            return $callback();
+        } catch (InstagramChallengeException) {
+            $this->logout();
+            $this->login();
+
+            return $this->fetch($callback);
+        }
     }
 }
