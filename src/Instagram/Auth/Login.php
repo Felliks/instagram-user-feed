@@ -118,8 +118,6 @@ class Login
             return $cookieJar;
         }
 
-        var_dump($response);
-
         if (property_exists($response, 'error_type') && $response->error_type === 'generic_request_error') {
             throw new InstagramBlockIpException('Generic error / Your IP may be block from Instagram. You should consider using a proxy.');
         }

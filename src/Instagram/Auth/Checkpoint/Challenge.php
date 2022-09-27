@@ -72,6 +72,8 @@ class Challenge
         $body = (string)$res->getBody();
         preg_match('/<script type="text\/javascript">window\._sharedData\s?=(.+);<\/script>/', $body, $matches);
 
+        var_dump($matches[1]);
+
         return json_decode($matches[1]);
     }
 
@@ -84,8 +86,6 @@ class Challenge
      */
     public function sendSecurityCode(\StdClass $challengeContent, string $url = '')
     {
-        var_dump($challengeContent);
-
         $url = $url != '' ? $url : $this->checkPointUrl;
 
         $method = 0;
