@@ -8,6 +8,7 @@ use GuzzleHttp\{ClientInterface, Cookie\SetCookie, Cookie\CookieJar};
 use GuzzleHttp\Exception\ClientException;
 use Instagram\Auth\Checkpoint\{Challenge, ImapClient};
 use Instagram\Exception\InstagramAuthException;
+use Instagram\Exception\InstagramBlockIpException;
 use Instagram\Utils\{InstagramHelper, OptionHelper, CacheResponse};
 
 class Login
@@ -55,8 +56,8 @@ class Login
 
     /**
      * @return CookieJar
-     *
      * @throws InstagramAuthException
+     * @throws InstagramBlockIpException
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
     public function process(): CookieJar
@@ -115,11 +116,15 @@ class Login
 
         if (property_exists($response, 'authenticated') && $response->authenticated == true) {
             return $cookieJar;
-        } else if (property_exists($response, 'error_type') && $response->error_type === 'generic_request_error') {
-            throw new InstagramAuthException('Generic error / Your IP may be block from Instagram. You should consider using a proxy.');
-        } else {
-            throw new InstagramAuthException('Wrong login / password');
         }
+
+        var_dump($response);
+
+        if (property_exists($response, 'error_type') && $response->error_type === 'generic_request_error') {
+            throw new InstagramBlockIpException('Generic error / Your IP may be block from Instagram. You should consider using a proxy.');
+        }
+
+        throw new InstagramAuthException('Wrong login / password');
     }
 
     /**
