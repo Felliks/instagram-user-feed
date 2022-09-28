@@ -102,6 +102,10 @@ class Login
 
             $data = json_decode((string) $exception->getResponse()->getBody());
 
+            if ($exception->getResponse()->getStatusCode() === 429) {
+                throw new InstagramBlockIpException();
+            }
+
             if ($data && $data->message === 'checkpoint_required') {
                 // @codeCoverageIgnoreStart
                 return $this->checkpointChallenge($cookieJar, $data);
