@@ -7,6 +7,7 @@ namespace Instagram\Auth\Checkpoint;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Cookie\CookieJar;
 use Instagram\Exception\InstagramAuthException;
+use Instagram\Exception\InstagramBlockAccountException;
 use Instagram\Utils\{InstagramHelper, OptionHelper};
 
 class Challenge
@@ -71,6 +72,10 @@ class Challenge
         $res  = $this->client->request('GET', $this->checkPointUrl, $headers);
         $body = (string)$res->getBody();
         preg_match('/<script type="text\/javascript">window\._sharedData\s?=(.+);<\/script>/', $body, $matches);
+
+        if (str_contains($matches[1], 'USR user data scraping')) {
+            throw new InstagramBlockAccountException($matches[1]);
+        }
 
         return json_decode($matches[1]);
     }

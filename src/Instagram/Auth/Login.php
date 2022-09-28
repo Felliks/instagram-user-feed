@@ -187,11 +187,6 @@ class Login
         $challenge = new Challenge($this->client, $cookieJar, $data->checkpoint_url, $this->challengeDelay);
 
         $challengeContent = $challenge->fetchChallengeContent();
-        $reason = $challengeContent->entry_data->Challenge[0]->fields->enrollment_reason;
-
-        if (null !== $reason && str_contains($reason, 'USR user data scraping')) {
-            throw new InstagramBlockAccountException($reason);
-        }
 
         $challenge->sendSecurityCode($challengeContent);
         //$challenge->reSendSecurityCode($challengeContent);
