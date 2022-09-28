@@ -62,6 +62,10 @@ abstract class AbstractDataFeed
             $res = $this->client->request('GET', $endpoint, $headers);
             CacheResponse::setResponse($res);
         } catch (ClientException $e) {
+            if (str_contains((string) $e->getResponse()->getBody(), 'checkpoint_required')) {
+                throw new InstagramChallengeException();
+            }
+
             if ($e->getResponse()->getStatusCode() === 404) {
                 throw new InstagramNotFoundException('Response code 404.');
             }
@@ -73,7 +77,7 @@ abstract class AbstractDataFeed
 
         $body = (string)$res->getBody();
 
-        if (str_contains($body, 'https://www.instagram.com/challenge/?next=')) {
+        if (str_contains($body, 'instagram.com/challenge/?next=')) {
             throw new InstagramChallengeException();
         }
 
