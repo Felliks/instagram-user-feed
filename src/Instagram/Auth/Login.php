@@ -189,7 +189,7 @@ class Login
         $challengeContent = $challenge->fetchChallengeContent();
         $reason = $challengeContent->entry_data->Challenge[0]->fields->enrollment_reason;
 
-        if (str_contains($reason, 'USR user data scraping')) {
+        if (null !== $reason && str_contains($reason, 'USR user data scraping')) {
             throw new InstagramBlockAccountException($reason);
         }
 
