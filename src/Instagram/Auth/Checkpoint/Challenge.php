@@ -72,8 +72,6 @@ class Challenge
         $body = (string)$res->getBody();
         preg_match('/<script type="text\/javascript">window\._sharedData\s?=(.+);<\/script>/', $body, $matches);
 
-        var_dump($matches[1]);
-
         return json_decode($matches[1]);
     }
 
@@ -86,7 +84,7 @@ class Challenge
      */
     public function sendSecurityCode(\StdClass $challengeContent, string $url = '')
     {
-        $url = $url != '' ? $url : $this->checkPointUrl;
+        $url = $url !== '' ? $url : $this->checkPointUrl;
 
         $method = 0;
 
@@ -94,7 +92,7 @@ class Challenge
         foreach ($challengeContent->entry_data->Challenge[0]->extraData->content as $item) {
             if ($item->__typename === 'GraphChallengePageForm') {
                 foreach ($item->fields[0]->values as $method) {
-                    if (strpos($method->label, 'Email') !== false) {
+                    if (str_contains($method->label, 'Email')) {
                         $method = $method->value;
                     }
                 }
@@ -196,8 +194,8 @@ class Challenge
 
         if ($codeSubmissionData->status === 'ok') {
             return $cookieJarClean;
-        } else {
-            throw new InstagramAuthException('Unknown error, please report it with a GitHub issue.');
         }
+
+        throw new InstagramAuthException('Unknown error, please report it with a GitHub issue.');
     }
 }

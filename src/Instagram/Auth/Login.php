@@ -8,6 +8,7 @@ use GuzzleHttp\{ClientInterface, Cookie\SetCookie, Cookie\CookieJar};
 use GuzzleHttp\Exception\ClientException;
 use Instagram\Auth\Checkpoint\{Challenge, ImapClient};
 use Instagram\Exception\InstagramAuthException;
+use Instagram\Exception\InstagramBlockAccountException;
 use Instagram\Exception\InstagramBlockIpException;
 use Instagram\Utils\{InstagramHelper, OptionHelper, CacheResponse};
 
@@ -105,9 +106,9 @@ class Login
                 // @codeCoverageIgnoreStart
                 return $this->checkpointChallenge($cookieJar, $data);
                 // @codeCoverageIgnoreEnd
-            } else {
-                throw new InstagramAuthException('Unknown error, please report it with a GitHub issue. ' . $exception->getMessage());
             }
+
+            throw new InstagramAuthException('Unknown error, please report it with a GitHub issue. ' . $exception->getMessage());
         }
 
         CacheResponse::setResponse($query);
@@ -181,6 +182,11 @@ class Login
         $challenge = new Challenge($this->client, $cookieJar, $data->checkpoint_url, $this->challengeDelay);
 
         $challengeContent = $challenge->fetchChallengeContent();
+        $reason = $challengeContent->Challenge[0]->fields->enrollment_reason;
+
+        if (str_contains($reason, 'USR user data scraping')) {
+            throw new InstagramBlockAccountException($reason);
+        }
 
         $challenge->sendSecurityCode($challengeContent);
         //$challenge->reSendSecurityCode($challengeContent);
