@@ -40,7 +40,6 @@ use Instagram\Model\{Location,
     TimelineFeed
 };
 use Instagram\Transport\{CommentPost,
-    JsonFriendshipStatusDataFeed,
     JsonMediaDetailedDataFeed,
     JsonMediasDataFeed,
     JsonMediaCommentsFeed,
@@ -60,7 +59,8 @@ use Instagram\Transport\{CommentPost,
     LocationData,
     LiveData,
     ReelsDataFeed,
-    TimelineDataFeed};
+    TimelineDataFeed
+};
 use Psr\Cache\CacheItemPoolInterface;
 use Instagram\Utils\{InstagramHelper, OptionHelper};
 
@@ -795,18 +795,5 @@ class Api
         $hydrator->hydrateIgtvs($data);
 
         return $hydrator->getProfile();
-    }
-
-    /**
-     * @param int $userId
-     * @return array
-     * @throws InstagramAuthException
-     * @throws \JsonException
-     */
-    public function getFriendshipStats(int $userId): array
-    {
-        $feed = new JsonFriendshipStatusDataFeed($this->client, $this->session);
-
-        return $feed->fetchData($userId);
     }
 }

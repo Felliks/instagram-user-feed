@@ -188,6 +188,7 @@ class Login
 
         $challengeContent = $challenge->fetchChallengeContent();
 
+
         $challenge->sendSecurityCode($challengeContent);
         //$challenge->reSendSecurityCode($challengeContent);
 

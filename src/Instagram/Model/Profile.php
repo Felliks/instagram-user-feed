@@ -49,11 +49,6 @@ class Profile
     /**
      * @var string
      */
-    private $profileThumbPicture;
-
-    /**
-     * @var string
-     */
     private $externalUrl;
 
     /**
@@ -70,11 +65,6 @@ class Profile
      * @var int
      */
     private $mediaCount = 0;
-
-    /**
-     * @var int
-     */
-    private $igtvCount = 0;
 
     /**
      * @var Media[]
@@ -206,23 +196,6 @@ class Profile
     /**
      * @return string
      */
-    public function getProfileThumbPicture(): string
-    {
-        return $this->profileThumbPicture;
-    }
-
-    /**
-     * @param string $profileThumbPicture
-     */
-    public function setProfileThumbPicture(string $profileThumbPicture): void
-    {
-        $this->profileThumbPicture = $profileThumbPicture;
-    }
-
-
-    /**
-     * @return string
-     */
     public function getExternalUrl(): ?string
     {
         return $this->externalUrl;
@@ -298,22 +271,6 @@ class Profile
     public function setMediaCount(int $mediaCount): void
     {
         $this->mediaCount = $mediaCount;
-    }
-
-    /**
-     * @return int
-     */
-    public function getIgtvCount(): int
-    {
-        return $this->igtvCount;
-    }
-
-    /**
-     * @param int $igtvCount
-     */
-    public function setIgtvCount(int $igtvCount): void
-    {
-        $this->igtvCount = $igtvCount;
     }
 
     /**
