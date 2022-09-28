@@ -97,6 +97,16 @@ class Profile
     private $endCursorIgtvs = null;
 
     /**
+     * @var bool
+     */
+    private $followedByViewer = null;
+
+    /**
+     * @var bool
+     */
+    private $requestedByViewer = null;
+
+    /**
      * @return string
      */
     public function getUserName(): string
@@ -345,6 +355,8 @@ class Profile
             'externalUrl'    => $this->externalUrl,
             'private'        => $this->private,
             'verified'       => $this->verified,
+            'followedByViewer' => $this->followedByViewer,
+            'requestedByViewer' => $this->requestedByViewer,
             'mediaCount'     => $this->mediaCount,
             'medias'         => array_map(function ($media) {
                 return $media->toArray();
@@ -435,5 +447,37 @@ class Profile
     public function setEndCursorIgtvs(?string $endCursorIgtvs): void
     {
         $this->endCursorIgtvs = $endCursorIgtvs;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isFollowedByViewer(): ?bool
+    {
+        return $this->followedByViewer;
+    }
+
+    /**
+     * @param bool $followedByViewer
+     */
+    public function setFollowedByViewer(?bool $followedByViewer): void
+    {
+        $this->followedByViewer = $followedByViewer;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isRequestedByViewer(): ?bool
+    {
+        return $this->requestedByViewer;
+    }
+
+    /**
+     * @param bool $requestedByViewer
+     */
+    public function setRequestedByViewer(?bool $requestedByViewer): void
+    {
+        $this->requestedByViewer = $requestedByViewer;
     }
 }

@@ -43,6 +43,14 @@ class ProfileHydrator
         $this->profile->setVerified($data->is_verified);
         $this->profile->setMediaCount($data->edge_owner_to_timeline_media->count);
 
+        if (property_exists($data, 'followed_by_viewer')) {
+            $this->profile->setFollowedByViewer($data->followed_by_viewer);
+        }
+
+        if (property_exists($data, 'requested_by_viewer')) {
+            $this->profile->setRequestedByViewer($data->requested_by_viewer);
+        }
+
         if (property_exists($data, 'biography')) {
             $this->profile->setBiography($data->biography);
         }

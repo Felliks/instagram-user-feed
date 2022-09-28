@@ -77,9 +77,6 @@ abstract class AbstractDataFeed
 
         $body = (string)$res->getBody();
 
-        var_dump($body);
-        var_dump($endpoint);
-
         if (str_contains($body, 'instagram.com/challenge/?next=')) {
             throw new InstagramChallengeException();
         }
