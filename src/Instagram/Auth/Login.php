@@ -182,6 +182,13 @@ class Login
         $challenge = new Challenge($this->client, $cookieJar, $data->checkpoint_url, $this->challengeDelay);
 
         $challengeContent = $challenge->fetchChallengeContent();
+
+        var_dump($challengeContent);
+        var_dump($challengeContent->Challenge);
+        var_dump($challengeContent->Challenge[0]);
+        var_dump($challengeContent->Challenge[0]->fields);
+        var_dump($challengeContent->Challenge[0]->fields->enrollment_reason);
+
         $reason = $challengeContent->Challenge[0]->fields->enrollment_reason;
 
         if (str_contains($reason, 'USR user data scraping')) {
