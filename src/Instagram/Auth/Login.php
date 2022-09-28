@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Instagram\Auth;
 
-use GuzzleHttp\{ClientInterface, Cookie\SetCookie, Cookie\CookieJar};
+use GuzzleHttp\{ClientInterface, Cookie\CookieJar};
 use GuzzleHttp\Exception\ClientException;
 use Instagram\Auth\Checkpoint\{Challenge, ImapClient};
 use Instagram\Exception\InstagramAuthException;
 use Instagram\Exception\InstagramBlockAccountException;
 use Instagram\Exception\InstagramBlockIpException;
+use Instagram\Exception\InstagramCredentialsException;
 use Instagram\Utils\{InstagramHelper, OptionHelper, CacheResponse};
 
 class Login
@@ -127,7 +128,7 @@ class Login
             throw new InstagramBlockIpException('Generic error / Your IP may be block from Instagram. You should consider using a proxy.');
         }
 
-        throw new InstagramAuthException('Wrong login / password');
+        throw new InstagramCredentialsException('Wrong login / password');
     }
 
     /**
