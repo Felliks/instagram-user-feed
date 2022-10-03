@@ -126,6 +126,10 @@ class Api
         /** @var SetCookie */
         $session = $cookies->getCookieByName('sessionId');
 
+        if (!$session instanceof SetCookie) {
+            throw new InstagramAuthException('Session expired, Please login with instagram credentials.');
+        }
+
         // Session expired (should never happened, Instagram TTL is ~ 1 year)
         if ($session->getExpires() < time()) {
             throw new InstagramAuthException('Session expired, Please login with instagram credentials.');
@@ -163,7 +167,7 @@ class Api
             $session = $cookies->getCookieByName('sessionId');
 
             // Session expired (should never happened, Instagram TTL is ~ 1 year)
-            if ($session->getExpires() < time()) {
+            if (!($session instanceof SetCookie) || ($session->getExpires() < time())) {
                 $this->logout($username);
                 $this->login($username, $password, $imapClient);
             }
