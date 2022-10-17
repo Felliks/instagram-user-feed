@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Instagram\Auth\Checkpoint;
 
-use Instagram\Exception\InstagramAuthException;
+use Instagram\Exception\InstagramImapException;
 
 class ImapClient
 {
@@ -34,7 +34,7 @@ class ImapClient
      * @param string $password
      * @param string $connectionType
      *
-     * @throws InstagramAuthException
+     * @throws InstagramImapException
      */
     public function __construct(string $server, string $login, string $password, string $connectionType = 'imap')
     {
@@ -79,7 +79,7 @@ class ImapClient
     }
 
     /**
-     * @throws InstagramAuthException
+     * @throws InstagramImapException
      *
      * @codeCoverageIgnore
      */
@@ -87,7 +87,7 @@ class ImapClient
     {
         // ext-imap is enabled?
         if (!extension_loaded('imap')) {
-            throw new InstagramAuthException('IMAP php extension must be enabled to bypass checkpoint_challenge.');
+            throw new InstagramImapException('IMAP php extension must be enabled to bypass checkpoint_challenge.');
         }
     }
 
@@ -103,7 +103,7 @@ class ImapClient
         $resource  = @imap_open('{' . $this->getServer() . '/' . $this->getConnectionType() . '/ssl}INBOX', $this->getLogin(), $this->getPassword());
 
         if (!$resource) {
-            throw new InstagramAuthException('Unable to open IMAP stream.');
+            throw new InstagramImapException('Unable to open IMAP stream.');
         }
 
         $numberMax = imap_num_msg($resource);
