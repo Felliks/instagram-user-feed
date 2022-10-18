@@ -102,6 +102,18 @@ class Login
         } catch (ClientException $exception) {
             CacheResponse::setResponse($exception->getResponse());
 
+            if (str_contains($exception->getMessage(), 'Your account has been permanently disabled')) {
+                throw new InstagramBlockAccountException();
+            }
+
+            if (str_contains($exception->getMessage(), 'Please wait a few minutes before you try again')) {
+                throw new InstagramBlockIpException();
+            }
+
+            if (str_contains($exception->getMessage(), 'Your IP may be block from Instagram')) {
+                throw new InstagramBlockIpException();
+            }
+
             $data = json_decode((string)$exception->getResponse()->getBody(), false, 512, JSON_THROW_ON_ERROR);
 
             if ($exception->getResponse()->getStatusCode() === 429) {
