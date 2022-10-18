@@ -81,13 +81,7 @@ abstract class AbstractDataFeed
             throw new InstagramChallengeException();
         }
 
-        $data = json_decode($body);
-
-        if ($data === null) {
-            throw new InstagramFetchException(json_last_error_msg());
-        }
-
-        return $data;
+        return json_decode($body, false, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -95,6 +89,7 @@ abstract class AbstractDataFeed
      *
      * @throws InstagramFetchException
      * @throws InstagramNotFoundException
+     * @throws \JsonException
      */
     protected function postJsonDataFeed(string $endpoint, array $formParameters = []): \StdClass
     {
@@ -134,13 +129,7 @@ abstract class AbstractDataFeed
             throw new InstagramChallengeException();
         }
 
-        $data = json_decode($body);
-
-        if ($data === null) {
-            throw new InstagramFetchException(json_last_error_msg());
-        }
-
-        return $data;
+        return json_decode($body, false, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -168,7 +157,7 @@ abstract class AbstractDataFeed
                 throw new InstagramAuthException('Unable to extract JSON data');
             }
 
-            return json_decode($matches[1])->rollout_hash;
+            return json_decode($matches[1], false, 512, JSON_THROW_ON_ERROR)->rollout_hash;
         } catch (\Exception $e) {
             throw new InstagramFetchException($e->getMessage());
         }

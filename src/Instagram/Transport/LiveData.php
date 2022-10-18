@@ -47,13 +47,6 @@ class LiveData extends AbstractDataFeed
             throw new InstagramNotFoundException('Response code 404.');
         }
 
-        $data = (string)$res->getBody();
-        $data = json_decode($data);
-
-        if ($data === null) {
-            throw new InstagramFetchException('No live streaming found');
-        }
-
-        return $data;
+        return json_decode((string)$res->getBody(),  false, 512, JSON_THROW_ON_ERROR);
     }
 }

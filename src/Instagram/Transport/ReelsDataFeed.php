@@ -69,13 +69,6 @@ class ReelsDataFeed extends AbstractDataFeed
 
         CacheResponse::setResponse($res);
 
-        $data = (string) $res->getBody();
-        $data = json_decode($data);
-
-        if ($data === null) {
-            throw new InstagramFetchException('Reels fetch error (invalid JSON)');
-        }
-
-        return $data;
+        return json_decode((string) $res->getBody(), true, 512, JSON_THROW_ON_ERROR);
     }
 }

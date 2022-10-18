@@ -61,6 +61,7 @@ class Login
      * @throws InstagramAuthException
      * @throws InstagramBlockIpException
      * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws InstagramCredentialsException
      */
     public function process(): CookieJar
     {
@@ -79,7 +80,7 @@ class Login
             throw new InstagramAuthException('Unable to extract JSON data');
         }
 
-        $data = json_decode($matches[1]);
+        $data = json_decode($matches[1], false, 512, JSON_THROW_ON_ERROR);
 
         $cookieJar = new CookieJar();
 
@@ -101,7 +102,7 @@ class Login
         } catch (ClientException $exception) {
             CacheResponse::setResponse($exception->getResponse());
 
-            $data = json_decode((string) $exception->getResponse()->getBody());
+            $data = json_decode((string)$exception->getResponse()->getBody(), false, 512, JSON_THROW_ON_ERROR);
 
             if ($exception->getResponse()->getStatusCode() === 429) {
                 throw new InstagramBlockIpException();
@@ -113,12 +114,16 @@ class Login
                 // @codeCoverageIgnoreEnd
             }
 
+            if (str_contains($exception->getMessage(), 'Sorry, your password was incorrect')) {
+                throw new InstagramCredentialsException('Wrong login / password');
+            }
+
             throw new InstagramAuthException('Unknown error, please report it with a GitHub issue. ' . $exception->getMessage());
         }
 
         CacheResponse::setResponse($query);
 
-        $response = json_decode((string) $query->getBody());
+        $response = json_decode((string) $query->getBody(), false, 512, JSON_THROW_ON_ERROR);
 
         if (property_exists($response, 'authenticated') && $response->authenticated == true) {
             return $cookieJar;
@@ -157,7 +162,7 @@ class Login
         preg_match('/<script type="text\/javascript">window\._sharedData\s?=(.+);<\/script>/', $html, $matches);
 
         if (isset($matches[1])) {
-            $data = json_decode($matches[1]);
+            $data = json_decode($matches[1], false, 512, JSON_THROW_ON_ERROR);
 
             if (!isset($data->config->viewer) && !isset($data->config->viewerId)) {
                 throw new InstagramAuthException('Please login with instagram credentials.');

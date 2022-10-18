@@ -15,6 +15,7 @@ class HtmlProfileDataFeed extends AbstractDataFeed
      * @return \StdClass
      *
      * @throws InstagramFetchException
+     * @throws \JsonException
      */
     public function fetchData(string $userName): \StdClass
     {
@@ -53,11 +54,7 @@ class HtmlProfileDataFeed extends AbstractDataFeed
             throw new InstagramFetchException('Profile #1 : Unable to extract JSON data');
         }
 
-        $data = json_decode($matches[1], false);
-
-        if ($data === null) {
-            throw new InstagramFetchException(json_last_error_msg());
-        }
+        $data = json_decode($matches[1], false, 512, JSON_THROW_ON_ERROR);
 
         if (!empty($data->entry_data->ProfilePage[0]->graphql)) {
             return $data->entry_data->ProfilePage[0]->graphql->user;
@@ -69,7 +66,7 @@ class HtmlProfileDataFeed extends AbstractDataFeed
             throw new InstagramFetchException('Profile #2 : Unable to extract JSON data');
         }
 
-        $data = json_decode($matches[1], false);
+        $data = json_decode($matches[1], false, 512, JSON_THROW_ON_ERROR);
 
         return $data->graphql->user;
     }

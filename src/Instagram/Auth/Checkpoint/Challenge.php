@@ -6,8 +6,10 @@ namespace Instagram\Auth\Checkpoint;
 
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Cookie\CookieJar;
+use GuzzleHttp\Exception\ClientException;
 use Instagram\Exception\InstagramAuthException;
 use Instagram\Exception\InstagramBlockAccountException;
+use Instagram\Exception\InstagramChallengeException;
 use Instagram\Utils\{InstagramHelper, OptionHelper};
 
 class Challenge
@@ -77,7 +79,7 @@ class Challenge
             throw new InstagramBlockAccountException($matches[1]);
         }
 
-        return json_decode($matches[1]);
+        return json_decode($matches[1], false, 512, JSON_THROW_ON_ERROR);
     }
 
 
@@ -167,6 +169,8 @@ class Challenge
      *
      * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws InstagramAuthException
+     * @throws InstagramChallengeException
+     * @throws \JsonException
      */
     public function submitSecurityCode(\StdClass $challengeContent, string $code): CookieJar
     {
@@ -193,9 +197,17 @@ class Challenge
             'cookies'     => $cookieJarClean
         ];
 
-        $res3 = $this->client->request('POST', $this->checkPointUrl, $postHeaders);
+        try {
+            $res3 = $this->client->request('POST', $this->checkPointUrl, $postHeaders);
+        } catch (ClientException $exception) {
+           if (str_contains($exception->getMessage(), 'Please check the code we sent you')) {
+                throw new InstagramChallengeException($exception->getMessage(), $exception->getCode());
+           }
 
-        $codeSubmissionData = json_decode((string)$res3->getBody());
+           throw $exception;
+        }
+
+        $codeSubmissionData = json_decode((string)$res3->getBody(), false, 512, JSON_THROW_ON_ERROR);
 
         if ($codeSubmissionData->status === 'ok') {
             return $cookieJarClean;
