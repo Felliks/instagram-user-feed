@@ -78,9 +78,6 @@ class Login
         preg_match('/<script type="text\/javascript">window\._sharedData\s?=(.+);<\/script>/', $html, $matches);
 
         if (!isset($matches[1])) {
-            var_dump($html);
-            die;
-
             throw new InstagramAuthException('Unable to extract JSON data');
         }
 
