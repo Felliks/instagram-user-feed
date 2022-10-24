@@ -62,6 +62,7 @@ class Login
      * @throws InstagramBlockIpException
      * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws InstagramCredentialsException
+     * @throws \JsonException
      */
     public function process(): CookieJar
     {
