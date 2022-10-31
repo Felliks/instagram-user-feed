@@ -172,6 +172,7 @@ class ImapClient
 
         // retry imap check (3 times max)
         if (!$foundCode && $try <= 6) {
+            var_dump('[Sleep]');
             sleep(10);
             $code = $this->getLastInstagramEmailContent($try + 1);
         }
