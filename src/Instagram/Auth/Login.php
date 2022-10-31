@@ -211,6 +211,8 @@ class Login
 
         $code = $this->imapClient->getLastInstagramEmailContent();
 
+        var_dump($code);
+
         return $challenge->submitSecurityCode($challengeContent, $code);
     }
 }

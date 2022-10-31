@@ -204,6 +204,10 @@ class Challenge
                 throw new InstagramChallengeException($exception->getMessage(), $exception->getCode());
            }
 
+           if (str_contains($exception->getMessage(), 'This field is required')) {
+                throw new InstagramChallengeException($exception->getMessage(), $exception->getCode());
+           }
+
            throw $exception;
         }
 

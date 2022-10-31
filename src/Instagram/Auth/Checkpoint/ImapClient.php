@@ -108,9 +108,8 @@ class ImapClient
             for ($i = 1; $i <= $numberMax; $i++) {
                 imap_delete($resource, (string) $i);
             }
+            imap_expunge($resource);
         }
-
-        imap_expunge($resource);
 
         imap_close($resource);
     }
