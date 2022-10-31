@@ -204,17 +204,10 @@ class Login
 
         $challengeContent = $challenge->fetchChallengeContent();
 
-        $this->imapClient->deleteAllEmails();
-
-        //$challenge->sendSecurityCode($challengeContent);
-        $challenge->reSendSecurityCode($challengeContent);
+        $challenge->sendSecurityCode($challengeContent);
+        //$challenge->reSendSecurityCode($challengeContent);
 
         $code = $this->imapClient->getLastInstagramEmailContent();
-        //if (!$code = $this->imapClient->getLastInstagramEmailContent()) {
-        //    $challenge->reSendSecurityCode($challengeContent);
-        //}
-
-        var_dump($code);
 
         return $challenge->submitSecurityCode($challengeContent, $code);
     }
