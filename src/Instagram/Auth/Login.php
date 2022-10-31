@@ -209,7 +209,10 @@ class Login
         $challenge->sendSecurityCode($challengeContent);
         //$challenge->reSendSecurityCode($challengeContent);
 
-        $code = $this->imapClient->getLastInstagramEmailContent();
+        if (!$code = $this->imapClient->getLastInstagramEmailContent()) {
+            $challenge->reSendSecurityCode($challengeContent);
+            $code = $this->imapClient->getLastInstagramEmailContent();
+        }
 
         var_dump($code);
 
