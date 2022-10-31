@@ -92,6 +92,30 @@ class ImapClient
     }
 
     /**
+     * @throws InstagramImapException
+     */
+    public function deleteAllEmails(): void
+    {
+        $resource  = @imap_open('{' . $this->getServer() . '/' . $this->getConnectionType() . '/ssl}INBOX', $this->getLogin(), $this->getPassword());
+
+        if (!$resource) {
+            throw new InstagramImapException('Unable to open IMAP stream.');
+        }
+
+        $numberMax = imap_num_msg($resource);
+
+        if ($numberMax > 0) {
+            for ($i = 1; $i <= $numberMax; $i++) {
+                imap_delete($resource, (string) $i);
+            }
+        }
+
+        imap_expunge($resource);
+
+        imap_close($resource);
+    }
+
+    /**
      * @param int $try
      *
      * @return string
@@ -136,6 +160,7 @@ class ImapClient
 
                 if ($isMailFromInstagram && isset($match[1])) {
                     imap_delete($resource, (string) $i);
+                    imap_expunge($resource);
 
                     $foundCode = true;
                     $code      = $match[1];

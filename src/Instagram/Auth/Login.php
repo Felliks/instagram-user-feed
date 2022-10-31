@@ -204,6 +204,7 @@ class Login
 
         $challengeContent = $challenge->fetchChallengeContent();
 
+        $this->imapClient->deleteAllEmails();
 
         $challenge->sendSecurityCode($challengeContent);
         //$challenge->reSendSecurityCode($challengeContent);
