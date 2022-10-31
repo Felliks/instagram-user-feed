@@ -10,6 +10,7 @@ use Instagram\Auth\Checkpoint\{Challenge, ImapClient};
 use Instagram\Exception\InstagramAuthException;
 use Instagram\Exception\InstagramBlockAccountException;
 use Instagram\Exception\InstagramBlockIpException;
+use Instagram\Exception\InstagramCodeNotSentException;
 use Instagram\Exception\InstagramCredentialsException;
 use Instagram\Utils\{InstagramHelper, OptionHelper, CacheResponse};
 
@@ -190,6 +191,7 @@ class Login
      * @return CookieJar
      *
      * @throws InstagramAuthException
+     * @throws InstagramCodeNotSentException
      * @throws \GuzzleHttp\Exception\GuzzleException
      *
      * @codeCoverageIgnore
@@ -207,7 +209,9 @@ class Login
         $challenge->sendSecurityCode($challengeContent);
         //$challenge->reSendSecurityCode($challengeContent);
 
-        $code = $this->imapClient->getLastInstagramEmailContent();
+        if (!$code = $this->imapClient->getLastInstagramEmailContent()) {
+            throw new InstagramCodeNotSentException();
+        }
 
         return $challenge->submitSecurityCode($challengeContent, $code);
     }
