@@ -6,6 +6,7 @@ namespace Instagram\Transport;
 
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\RequestException;
 use Instagram\Auth\Session;
 use Instagram\Exception\{InstagramAuthException,
     InstagramChallengeException,
@@ -71,10 +72,10 @@ abstract class AbstractDataFeed
             }
 
             throw new InstagramFetchException('Error: ' . $e->getMessage());
-        } catch (\Exception $e) {
+        } catch (RequestException $e) {
             throw $e;
-
-            //throw new InstagramFetchException('Error: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            throw new InstagramFetchException('Error: ' . $e->getMessage());
         }
 
         $body = (string)$res->getBody();
