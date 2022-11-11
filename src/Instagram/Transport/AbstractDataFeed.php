@@ -72,9 +72,9 @@ abstract class AbstractDataFeed
 
             throw new InstagramFetchException('Error: ' . $e->getMessage());
         } catch (\Exception $e) {
-            die(var_dump($e));
+            throw $e;
 
-            throw new InstagramFetchException('Error: ' . $e->getMessage());
+            //throw new InstagramFetchException('Error: ' . $e->getMessage());
         }
 
         $body = (string)$res->getBody();
