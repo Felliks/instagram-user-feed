@@ -198,6 +198,10 @@ class Login
      */
     private function checkpointChallenge(CookieJar $cookieJar, \StdClass $data): CookieJar
     {
+        dump('_-_-_-___CHALLENGE_START___-_-_-_-_');
+        dump($data);
+        dump('_-_-_-___CHALLENGE_END___-_-_-_-_');
+
         if (!$this->imapClient instanceof ImapClient) {
             throw new InstagramAuthException('Checkpoint required, please provide IMAP credentials to process authentication.');
         }
