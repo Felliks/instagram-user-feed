@@ -138,7 +138,7 @@ class ImapClient
         if ($numberMax > 0) {
 
             // check into the last 3 mails
-            for ($i = $numberMax; $i > ($numberMax - 3); $i--) {
+            for ($i = $numberMax; $i > ($numberMax - 3) && $i > 0; $i--) {
                 $body = imap_body($resource, $i);
                 $body = quoted_printable_decode($body);
 
