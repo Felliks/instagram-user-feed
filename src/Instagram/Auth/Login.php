@@ -210,11 +210,6 @@ class Login
         $challenge = new Challenge($this->client, $cookieJar, $data->checkpoint_url, $this->challengeDelay);
 
         $challengeContent = $challenge->fetchChallengeContent();
-
-        var_dump('-----------Challenge START-----------');
-        var_dump($challengeContent);
-        var_dump('-----------Challenge END-----------');
-
         $challenge->sendSecurityCode($challengeContent);
         //$challenge->reSendSecurityCode($challengeContent);
 
