@@ -64,6 +64,7 @@ class Login
      * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws InstagramCredentialsException
      * @throws \JsonException
+     * @throws InstagramBlockAccountException
      */
     public function process(): CookieJar
     {
@@ -102,6 +103,10 @@ class Login
         } catch (ClientException $exception) {
             CacheResponse::setResponse($exception->getResponse());
 
+            if ($exception->getResponse()->getStatusCode() === 429) {
+                throw new InstagramBlockIpException();
+            }
+
             if (str_contains($exception->getMessage(), 'Your account has been permanently disabled')) {
                 throw new InstagramBlockAccountException();
             }
@@ -114,24 +119,20 @@ class Login
                 throw new InstagramBlockIpException();
             }
 
+            if (str_contains($exception->getMessage(), 'Sorry, your password was incorrect')) {
+                throw new InstagramCredentialsException('Wrong login / password');
+            }
+
             $data = json_decode((string)$exception->getResponse()->getBody(), false, 512, JSON_THROW_ON_ERROR);
 
-            var_dump('----------------------');
+            var_dump('-----------RESPONSE START-----------');
             var_dump($data);
-            var_dump('----------------------');
-
-            if ($exception->getResponse()->getStatusCode() === 429) {
-                throw new InstagramBlockIpException();
-            }
+            var_dump('-----------RESPONSE END-----------');
 
             if ($data && $data->message === 'checkpoint_required') {
                 // @codeCoverageIgnoreStart
                 return $this->checkpointChallenge($cookieJar, $data);
                 // @codeCoverageIgnoreEnd
-            }
-
-            if (str_contains($exception->getMessage(), 'Sorry, your password was incorrect')) {
-                throw new InstagramCredentialsException('Wrong login / password');
             }
 
             throw new InstagramAuthException('Unknown error, please report it with a GitHub issue. ' . $exception->getMessage());
@@ -209,6 +210,10 @@ class Login
         $challenge = new Challenge($this->client, $cookieJar, $data->checkpoint_url, $this->challengeDelay);
 
         $challengeContent = $challenge->fetchChallengeContent();
+
+        var_dump('-----------Challenge START-----------');
+        var_dump($challengeContent);
+        var_dump('-----------Challenge END-----------');
 
         $challenge->sendSecurityCode($challengeContent);
         //$challenge->reSendSecurityCode($challengeContent);
