@@ -116,6 +116,10 @@ class Login
 
             $data = json_decode((string)$exception->getResponse()->getBody(), false, 512, JSON_THROW_ON_ERROR);
 
+            dump('----------------------');
+            dump($data);
+            dump('----------------------');
+
             if ($exception->getResponse()->getStatusCode() === 429) {
                 throw new InstagramBlockIpException();
             }
@@ -198,10 +202,6 @@ class Login
      */
     private function checkpointChallenge(CookieJar $cookieJar, \StdClass $data): CookieJar
     {
-        dump('_-_-_-___CHALLENGE_START___-_-_-_-_');
-        dump($data);
-        dump('_-_-_-___CHALLENGE_END___-_-_-_-_');
-
         if (!$this->imapClient instanceof ImapClient) {
             throw new InstagramAuthException('Checkpoint required, please provide IMAP credentials to process authentication.');
         }
