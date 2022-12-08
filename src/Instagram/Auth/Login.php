@@ -116,9 +116,9 @@ class Login
 
             $data = json_decode((string)$exception->getResponse()->getBody(), false, 512, JSON_THROW_ON_ERROR);
 
-            dump('----------------------');
-            dump($data);
-            dump('----------------------');
+            var_dump('----------------------');
+            var_dump($data);
+            var_dump('----------------------');
 
             if ($exception->getResponse()->getStatusCode() === 429) {
                 throw new InstagramBlockIpException();
