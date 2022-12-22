@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Instagram\Transport;
 
-use Instagram\Exception\InstagramFetchException;
 use Instagram\Utils\Endpoints;
+use Instagram\Exception\InstagramFetchException;
+use Instagram\Exception\InstagramFollowException;
+use Instagram\Exception\InstagramNotFoundException;
 
 class FollowUnfollow extends AbstractDataFeed
 {
@@ -14,12 +16,16 @@ class FollowUnfollow extends AbstractDataFeed
      *
      * @return string
      *
-     * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
+     * @throws InstagramFollowException
      */
     public function follow(int $accountId): string
     {
-        $endpoint = Endpoints::getFollowUrl($accountId);
-        return $this->fetchData($endpoint);
+        try {
+            return $this->fetchData(Endpoints::getFollowUrl($accountId));
+        } catch (InstagramFetchException $exception) {
+            throw new InstagramFollowException($exception->getMessage(), $exception->getCode());
+        }
     }
 
     /**
@@ -28,6 +34,7 @@ class FollowUnfollow extends AbstractDataFeed
      * @return string
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     public function unfollow(int $accountId): string
     {
@@ -41,6 +48,7 @@ class FollowUnfollow extends AbstractDataFeed
      * @return string
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     private function fetchData(string $endpoint): string
     {

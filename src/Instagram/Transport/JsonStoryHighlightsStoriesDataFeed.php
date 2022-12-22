@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Instagram\Transport;
 
 use Instagram\Exception\InstagramFetchException;
+use Instagram\Exception\InstagramNotFoundException;
 use Instagram\Model\StoryHighlightsFolder;
 use Instagram\Utils\InstagramHelper;
 
@@ -16,6 +17,7 @@ class JsonStoryHighlightsStoriesDataFeed extends AbstractDataFeed
      * @return \StdClass
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     public function fetchData(StoryHighlightsFolder $folder): \StdClass
     {

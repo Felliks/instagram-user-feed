@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Instagram\Auth\Checkpoint;
 
-use Instagram\Exception\InstagramAuthException;
+use Instagram\Exception\InstagramImapException;
 
 class ImapClient
 {
@@ -34,7 +34,7 @@ class ImapClient
      * @param string $password
      * @param string $connectionType
      *
-     * @throws InstagramAuthException
+     * @throws InstagramImapException
      */
     public function __construct(string $server, string $login, string $password, string $connectionType = 'imap')
     {
@@ -79,7 +79,7 @@ class ImapClient
     }
 
     /**
-     * @throws InstagramAuthException
+     * @throws InstagramImapException
      *
      * @codeCoverageIgnore
      */
@@ -87,8 +87,31 @@ class ImapClient
     {
         // ext-imap is enabled?
         if (!extension_loaded('imap')) {
-            throw new InstagramAuthException('IMAP php extension must be enabled to bypass checkpoint_challenge.');
+            throw new InstagramImapException('IMAP php extension must be enabled to bypass checkpoint_challenge.');
         }
+    }
+
+    /**
+     * @throws InstagramImapException
+     */
+    public function deleteAllEmails(): void
+    {
+        $resource  = @imap_open('{' . $this->getServer() . '/' . $this->getConnectionType() . '/ssl}INBOX', $this->getLogin(), $this->getPassword());
+
+        if (!$resource) {
+            throw new InstagramImapException('Unable to open IMAP stream.');
+        }
+
+        $numberMax = imap_num_msg($resource);
+
+        if ($numberMax > 0) {
+            for ($i = 1; $i <= $numberMax; $i++) {
+                imap_delete($resource, (string) $i);
+            }
+            imap_expunge($resource);
+        }
+
+        imap_close($resource);
     }
 
     /**
@@ -103,7 +126,7 @@ class ImapClient
         $resource  = @imap_open('{' . $this->getServer() . '/' . $this->getConnectionType() . '/ssl}INBOX', $this->getLogin(), $this->getPassword());
 
         if (!$resource) {
-          throw new InstagramAuthException('Unable to open IMAP stream.');
+            throw new InstagramImapException('Unable to open IMAP stream.');
         }
 
         $numberMax = imap_num_msg($resource);
@@ -115,7 +138,7 @@ class ImapClient
         if ($numberMax > 0) {
 
             // check into the last 3 mails
-            for ($i = $numberMax; $i > ($numberMax - 3); $i--) {
+            for ($i = $numberMax; $i > ($numberMax - 3) && $i > 0; $i--) {
                 $body = imap_body($resource, $i);
                 $body = quoted_printable_decode($body);
 
@@ -136,7 +159,8 @@ class ImapClient
                 }
 
                 if ($isMailFromInstagram && isset($match[1])) {
-                    imap_delete($resource, $i);
+                    imap_delete($resource, (string) $i);
+                    imap_expunge($resource);
 
                     $foundCode = true;
                     $code      = $match[1];
@@ -147,9 +171,9 @@ class ImapClient
 
         imap_close($resource);
 
-        // retry imap check (3 times max)
-        if (!$foundCode && $try <= 3) {
-            sleep(6);
+        // retry imap check (6 times max)
+        if (!$foundCode && $try <= 6) {
+            sleep(10);
             $code = $this->getLastInstagramEmailContent($try + 1);
         }
 

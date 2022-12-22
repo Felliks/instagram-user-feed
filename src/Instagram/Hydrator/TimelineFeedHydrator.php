@@ -69,7 +69,7 @@ class TimelineFeedHydrator
         $additionalInfo = [];
         $additionalInfo['pullToRefresh'] = $feed->pull_to_refresh_window_ms;
         $additionalInfo['preloadDistance'] = $feed->preload_distance;
-        $additionalInfo['lastHeadLoad'] = \DateTime::createFromFormat('U', (string) $feed->last_head_load_ms);
+        //$additionalInfo['lastHeadLoad'] = \DateTime::createFromFormat('U', (string) $feed->last_head_load_ms);
         $additionalInfo['hideLikeAndViewCounts'] = boolval($feed->hide_like_and_view_counts);
         $additionalInfo['clientFeedChangelistApplied'] = $feed->client_feed_changelist_applied;
         $this->timelineFeed->setAdditionalInfo((object) $additionalInfo);

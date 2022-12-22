@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace Instagram\Transport;
 
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\RequestException;
 use Instagram\Auth\Session;
-use Instagram\Exception\{InstagramAuthException, InstagramFetchException};
+use Instagram\Exception\{InstagramAuthException,
+    InstagramChallengeException,
+    InstagramFetchException,
+    InstagramNotFoundException};
 use Instagram\Utils\{OptionHelper, InstagramHelper, CacheResponse};
 
 abstract class AbstractDataFeed
@@ -38,6 +43,7 @@ abstract class AbstractDataFeed
      * @return \StdClass
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     protected function fetchJsonDataFeed(string $endpoint, array $headers = []): \StdClass
     {
@@ -53,23 +59,40 @@ abstract class AbstractDataFeed
             $headers['cookies'] = $this->session->getCookies();
         }
 
-        $res = $this->client->request('GET', $endpoint, $headers);
-        CacheResponse::setResponse($res);
+        try {
+            $res = $this->client->request('GET', $endpoint, $headers);
+            CacheResponse::setResponse($res);
+        } catch (ClientException $e) {
+            if (str_contains((string) $e->getResponse()->getBody(), 'checkpoint_required')) {
+                throw new InstagramChallengeException();
+            }
 
-        $data = (string)$res->getBody();
-        $data = json_decode($data);
+            if ($e->getResponse()->getStatusCode() === 404) {
+                throw new InstagramNotFoundException('Response code 404.');
+            }
 
-        if ($data === null) {
-            throw new InstagramFetchException(json_last_error_msg());
+            throw new InstagramFetchException('Error: ' . $e->getMessage());
+        } catch (RequestException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw new InstagramFetchException('Error: ' . $e->getMessage());
         }
 
-        return $data;
+        $body = (string)$res->getBody();
+
+        if (str_contains($body, 'instagram.com/challenge/?next=')) {
+            throw new InstagramChallengeException();
+        }
+
+        return json_decode($body, false, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
      * @param string $endpoint
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
+     * @throws \JsonException
      */
     protected function postJsonDataFeed(string $endpoint, array $formParameters = []): \StdClass
     {
@@ -90,17 +113,26 @@ abstract class AbstractDataFeed
             ]);
         }
 
-        $res = $this->client->request('POST', $endpoint, $options);
-        CacheResponse::setResponse($res);
+        try {
+            $res = $this->client->request('POST', $endpoint, $options);
+            CacheResponse::setResponse($res);
+        } catch (ClientException $e) {
+            if ($e->getResponse()->getStatusCode() === 404) {
+                throw new InstagramNotFoundException('Response code 404.');
+            }
 
-        $data = (string)$res->getBody();
-        $data = json_decode($data);
-
-        if ($data === null) {
-            throw new InstagramFetchException(json_last_error_msg());
+            throw new InstagramFetchException('Error: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            throw new InstagramFetchException('Error: ' . $e->getMessage());
         }
 
-        return $data;
+        $body = (string)$res->getBody();
+
+        if (str_contains('https://www.instagram.com/challenge/?next=', $body)) {
+            throw new InstagramChallengeException();
+        }
+
+        return json_decode($body, false, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -128,7 +160,7 @@ abstract class AbstractDataFeed
                 throw new InstagramAuthException('Unable to extract server version');
             }
 
-            return $matches[1];
+            return json_decode($matches[1], false, 512, JSON_THROW_ON_ERROR)->rollout_hash;
         } catch (\Exception $e) {
             throw new InstagramFetchException($e->getMessage());
         }

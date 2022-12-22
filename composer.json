@@ -37,11 +37,12 @@
     }
   },
   "require": {
-    "php": ">=7.2.5",
+    "php": ">=8.0",
     "ext-curl": "*",
     "ext-json": "*",
     "symfony/cache": "^3.4|^4.3|^5.0|^6.0",
-    "guzzlehttp/guzzle": "^6.0|^7.0"
+    "guzzlehttp/guzzle": "^6.0|^7.0",
+    "ext-imap": "*"
   },
   "require-dev": {
     "php-coveralls/php-coveralls": "^2.2",

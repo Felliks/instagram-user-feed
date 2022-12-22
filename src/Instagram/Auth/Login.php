@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Instagram\Auth;
 
-use GuzzleHttp\{ClientInterface, Cookie\SetCookie, Cookie\CookieJar};
+use GuzzleHttp\{ClientInterface, Cookie\CookieJar};
 use GuzzleHttp\Exception\ClientException;
 use Instagram\Auth\Checkpoint\{Challenge, ImapClient};
 use Instagram\Exception\InstagramAuthException;
+use Instagram\Exception\InstagramBlockAccountException;
+use Instagram\Exception\InstagramBlockIpException;
+use Instagram\Exception\InstagramCodeNotSentException;
+use Instagram\Exception\InstagramCredentialsException;
 use Instagram\Utils\{InstagramHelper, OptionHelper, CacheResponse};
 
 class Login
@@ -55,9 +59,12 @@ class Login
 
     /**
      * @return CookieJar
-     *
      * @throws InstagramAuthException
+     * @throws InstagramBlockIpException
      * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws InstagramCredentialsException
+     * @throws \JsonException
+     * @throws InstagramBlockAccountException
      */
     public function process(): CookieJar
     {
@@ -98,28 +105,54 @@ class Login
         } catch (ClientException $exception) {
             CacheResponse::setResponse($exception->getResponse());
 
-            $data = json_decode((string) $exception->getResponse()->getBody());
+            if ($exception->getResponse()->getStatusCode() === 429) {
+                throw new InstagramBlockIpException();
+            }
+
+            if (str_contains($exception->getMessage(), 'Your account has been permanently disabled')) {
+                throw new InstagramBlockAccountException();
+            }
+
+            if (str_contains($exception->getMessage(), 'Please wait a few minutes before you try again')) {
+                throw new InstagramBlockIpException();
+            }
+
+            if (str_contains($exception->getMessage(), 'Your IP may be block from Instagram')) {
+                throw new InstagramBlockIpException();
+            }
+
+            if (str_contains($exception->getMessage(), 'Sorry, your password was incorrect')) {
+                throw new InstagramCredentialsException('Wrong login / password');
+            }
+
+            $data = json_decode((string)$exception->getResponse()->getBody(), false, 512, JSON_THROW_ON_ERROR);
+
+            var_dump('-----------RESPONSE START-----------');
+            var_dump($data);
+            var_dump('-----------RESPONSE END-----------');
 
             if ($data && $data->message === 'checkpoint_required') {
                 // @codeCoverageIgnoreStart
                 return $this->checkpointChallenge($cookieJar, $data);
                 // @codeCoverageIgnoreEnd
-            } else {
-                throw new InstagramAuthException('Unknown error, please report it with a GitHub issue. ' . $exception->getMessage());
             }
+
+            throw new InstagramAuthException('Unknown error, please report it with a GitHub issue. ' . $exception->getMessage());
         }
 
         CacheResponse::setResponse($query);
 
-        $response = json_decode((string) $query->getBody());
+        $response = json_decode((string) $query->getBody(), false, 512, JSON_THROW_ON_ERROR);
 
         if (property_exists($response, 'authenticated') && $response->authenticated == true) {
             return $cookieJar;
-        } else if (property_exists($response, 'error_type') && $response->error_type === 'generic_request_error') {
-            throw new InstagramAuthException('Generic error / Your IP may be block from Instagram. You should consider using a proxy.');
-        } else {
-            throw new InstagramAuthException('Wrong login / password');
         }
+
+        if (property_exists($response, 'error_type') && $response->error_type === 'generic_request_error') {
+            throw new InstagramBlockIpException('Generic error / Your IP may be block from Instagram. You should consider using a proxy.');
+        }
+
+        throw new InstagramCredentialsException('Wrong login / password');
     }
 
     /**
@@ -148,7 +181,7 @@ class Login
         preg_match('/\\\"csrf_token\\\":\\\"(.*?)\\\"/', $html, $matches);
 
         if (isset($matches[1])) {
-            $data = $matches[1];
+            $data = json_decode($matches[1], false, 512, JSON_THROW_ON_ERROR);
 
             if (!isset($data->config->viewer) && !isset($data->config->viewerId)) {
                 throw new InstagramAuthException('Please login with instagram credentials.');
@@ -165,6 +198,7 @@ class Login
      * @return CookieJar
      *
      * @throws InstagramAuthException
+     * @throws InstagramCodeNotSentException
      * @throws \GuzzleHttp\Exception\GuzzleException
      *
      * @codeCoverageIgnore
@@ -178,11 +212,12 @@ class Login
         $challenge = new Challenge($this->client, $cookieJar, $data->checkpoint_url, $this->challengeDelay);
 
         $challengeContent = $challenge->fetchChallengeContent();
-
         $challenge->sendSecurityCode($challengeContent);
         //$challenge->reSendSecurityCode($challengeContent);
 
-        $code = $this->imapClient->getLastInstagramEmailContent();
+        if (!$code = $this->imapClient->getLastInstagramEmailContent()) {
+            throw new InstagramCodeNotSentException();
+        }
 
         return $challenge->submitSecurityCode($challengeContent, $code);
     }

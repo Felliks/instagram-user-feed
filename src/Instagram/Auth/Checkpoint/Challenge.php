@@ -6,7 +6,10 @@ namespace Instagram\Auth\Checkpoint;
 
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Cookie\CookieJar;
+use GuzzleHttp\Exception\ClientException;
 use Instagram\Exception\InstagramAuthException;
+use Instagram\Exception\InstagramBlockAccountException;
+use Instagram\Exception\InstagramChallengeException;
 use Instagram\Utils\{InstagramHelper, OptionHelper};
 
 class Challenge
@@ -72,7 +75,11 @@ class Challenge
         $body = (string)$res->getBody();
         preg_match('/<script type="text\/javascript">window\._sharedData\s?=(.+);<\/script>/', $body, $matches);
 
-        return json_decode($matches[1]);
+        if (str_contains($matches[1], 'USR user data scraping')) {
+            throw new InstagramBlockAccountException($matches[1]);
+        }
+
+        return json_decode($matches[1], false, 512, JSON_THROW_ON_ERROR);
     }
 
 
@@ -84,7 +91,7 @@ class Challenge
      */
     public function sendSecurityCode(\StdClass $challengeContent, string $url = '')
     {
-        $url = $url != '' ? $url : $this->checkPointUrl;
+        $url = $url !== '' ? $url : $this->checkPointUrl;
 
         $method = 0;
 
@@ -92,7 +99,7 @@ class Challenge
         foreach ($challengeContent->entry_data->Challenge[0]->extraData->content as $item) {
             if ($item->__typename === 'GraphChallengePageForm') {
                 foreach ($item->fields[0]->values as $method) {
-                    if (strpos($method->label, 'Email') !== false) {
+                    if (str_contains($method->label, 'Email')) {
                         $method = $method->value;
                     }
                 }
@@ -162,6 +169,8 @@ class Challenge
      *
      * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws InstagramAuthException
+     * @throws InstagramChallengeException
+     * @throws \JsonException
      */
     public function submitSecurityCode(\StdClass $challengeContent, string $code): CookieJar
     {
@@ -188,14 +197,26 @@ class Challenge
             'cookies'     => $cookieJarClean
         ];
 
-        $res3 = $this->client->request('POST', $this->checkPointUrl, $postHeaders);
+        try {
+            $res3 = $this->client->request('POST', $this->checkPointUrl, $postHeaders);
+        } catch (ClientException $exception) {
+           if (str_contains($exception->getMessage(), 'Please check the code we sent you')) {
+                throw new InstagramChallengeException($exception->getMessage(), $exception->getCode());
+           }
 
-        $codeSubmissionData = json_decode((string)$res3->getBody());
+           if (str_contains($exception->getMessage(), 'This field is required')) {
+                throw new InstagramChallengeException($exception->getMessage(), $exception->getCode());
+           }
+
+           throw $exception;
+        }
+
+        $codeSubmissionData = json_decode((string)$res3->getBody(), false, 512, JSON_THROW_ON_ERROR);
 
         if ($codeSubmissionData->status === 'ok') {
             return $cookieJarClean;
-        } else {
-            throw new InstagramAuthException('Unknown error, please report it with a GitHub issue.');
         }
+
+        throw new InstagramAuthException('Unknown error, please report it with a GitHub issue.');
     }
 }

@@ -8,6 +8,7 @@ use Instagram\Api;
 use Instagram\Auth\Login;
 use Instagram\Auth\Session;
 use Instagram\Exception\InstagramAuthException;
+use Instagram\Exception\InstagramBlockIpException;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
@@ -66,7 +67,7 @@ class LoginTest extends TestCase
 
     public function testLoginWithGenericError()
     {
-        $this->expectException(InstagramAuthException::class);
+        $this->expectException(InstagramBlockIpException::class);
         $this->expectExceptionMessage('Generic error / Your IP may be block from Instagram. You should consider using a proxy.');
 
         $mock = new MockHandler([

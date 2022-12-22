@@ -7,6 +7,7 @@ namespace Instagram\Transport;
 use GuzzleHttp\Cookie\SetCookie;
 use GuzzleHttp\Exception\ClientException;
 use Instagram\Exception\InstagramFetchException;
+use Instagram\Exception\InstagramNotFoundException;
 use Instagram\Utils\{Endpoints, OptionHelper, CacheResponse};
 
 class ReelsDataFeed extends AbstractDataFeed
@@ -68,13 +69,6 @@ class ReelsDataFeed extends AbstractDataFeed
 
         CacheResponse::setResponse($res);
 
-        $data = (string) $res->getBody();
-        $data = json_decode($data);
-
-        if ($data === null) {
-            throw new InstagramFetchException('Reels fetch error (invalid JSON)');
-        }
-
-        return $data;
+        return json_decode((string) $res->getBody(), true, 512, JSON_THROW_ON_ERROR);
     }
 }

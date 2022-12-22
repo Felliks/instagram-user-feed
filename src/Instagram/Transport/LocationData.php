@@ -18,6 +18,7 @@ class LocationData extends AbstractDataFeed
      *
      * @throws InstagramFetchException
      * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws \JsonException
      */
     public function fetchData(int $locationId): \StdClass
     {
@@ -53,7 +54,7 @@ class LocationData extends AbstractDataFeed
             throw new InstagramFetchException('Unable to extract JSON data');
         }
 
-        $data = json_decode($matches[1], false);
+        $data = json_decode($matches[1], false, 512, JSON_THROW_ON_ERROR);
 
         return $data->entry_data->LocationsPage[0]->graphql->location;
     }

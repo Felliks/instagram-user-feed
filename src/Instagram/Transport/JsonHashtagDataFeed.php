@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Instagram\Transport;
 
 use Instagram\Exception\InstagramFetchException;
+use Instagram\Exception\InstagramNotFoundException;
 use Instagram\Utils\InstagramHelper;
 
 class JsonHashtagDataFeed extends AbstractDataFeed
@@ -15,6 +16,7 @@ class JsonHashtagDataFeed extends AbstractDataFeed
      * @return \StdClass
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     public function fetchData(string $hashtag): \StdClass
     {
@@ -37,6 +39,7 @@ class JsonHashtagDataFeed extends AbstractDataFeed
      * @return \StdClass
      *
      * @throws InstagramFetchException
+     * @throws InstagramNotFoundException
      */
     public function fetchMoreData(string $hashtag, string $endCursor): \StdClass
     {

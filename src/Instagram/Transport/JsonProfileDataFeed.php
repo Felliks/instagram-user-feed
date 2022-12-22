@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Instagram\Transport;
 
 use Instagram\Exception\InstagramFetchException;
+use Instagram\Exception\InstagramNotFoundException;
 use Instagram\Utils\InstagramHelper;
 
 class JsonProfileDataFeed extends AbstractDataFeed
@@ -33,7 +34,7 @@ class JsonProfileDataFeed extends AbstractDataFeed
         $data = $this->fetchJsonDataFeed($endpoint);
 
         if (!$data->data->user) {
-            throw new InstagramFetchException('Instagram id ' . $id . ' does not exist.');
+            throw new InstagramNotFoundException('Instagram id ' . $id . ' does not exist.');
         }
 
         return $data->data->user->reel->user->username;

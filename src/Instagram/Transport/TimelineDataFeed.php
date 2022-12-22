@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Instagram\Transport;
 
-use GuzzleHttp\Cookie\SetCookie;
 use GuzzleHttp\Exception\ClientException;
 use Instagram\Exception\InstagramFetchException;
 use Instagram\Utils\Endpoints;
@@ -18,16 +17,15 @@ class TimelineDataFeed extends AbstractDataFeed
      * @param string|null $maxId
      *
      * @return \StdClass
+     * @throws \JsonException
      */
     public function fetchData(string $maxId = null): \StdClass
     {
         $newFeedPostExist = $this->fetchDataNewFeedPostExist();
         $timelineFeed     = $this->fetchDataTimelineFeed($maxId);
+        $data = json_encode(array_merge($newFeedPostExist, $timelineFeed), JSON_THROW_ON_ERROR);
 
-        $data = json_encode(array_merge($newFeedPostExist, $timelineFeed));
-        $data = json_decode($data, false);
-
-        return $data;
+        return json_decode($data, false, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -35,6 +33,7 @@ class TimelineDataFeed extends AbstractDataFeed
      *
      * @throws InstagramFetchException
      * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws \JsonException
      */
     public function fetchDataNewFeedPostExist(): array
     {
@@ -61,14 +60,7 @@ class TimelineDataFeed extends AbstractDataFeed
             throw new InstagramFetchException('New feed post exist fetch error');
         }
 
-        $data = (string) $res->getBody();
-        $data = json_decode($data, true);
-
-        if ($data === null) {
-            throw new InstagramFetchException('New feed post exits fetch error (invalid JSON)');
-        }
-
-        return $data;
+        return json_decode((string) $res->getBody(), true, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -119,13 +111,6 @@ class TimelineDataFeed extends AbstractDataFeed
             throw new InstagramFetchException('Timeline fetch error');
         }
 
-        $data = (string) $res->getBody();
-        $data = json_decode($data, true);
-
-        if ($data === null) {
-            throw new InstagramFetchException('Timeline fetch error (invalid JSON)');
-        }
-
-        return $data;
+        return json_decode((string) $res->getBody(), true, 512, JSON_THROW_ON_ERROR);
     }
 }

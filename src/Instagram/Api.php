@@ -126,6 +126,10 @@ class Api
         /** @var SetCookie */
         $session = $cookies->getCookieByName('sessionId');
 
+        if (!$session instanceof SetCookie) {
+            throw new InstagramAuthException('Session expired, Please login with instagram credentials.');
+        }
+
         // Session expired (should never happened, Instagram TTL is ~ 1 year)
         if ($session->getExpires() < time()) {
             throw new InstagramAuthException('Session expired, Please login with instagram credentials.');
@@ -163,7 +167,7 @@ class Api
             $session = $cookies->getCookieByName('sessionId');
 
             // Session expired (should never happened, Instagram TTL is ~ 1 year)
-            if ($session->getExpires() < time()) {
+            if (!($session instanceof SetCookie) || ($session->getExpires() < time())) {
                 $this->logout($username);
                 $this->login($username, $password, $imapClient);
             }
@@ -309,11 +313,12 @@ class Api
      *
      * @throws Exception\InstagramAuthException
      * @throws Exception\InstagramFetchException
+     * @throws Exception\InstagramNotFoundException
      */
-    public function getMoreMediaComments(string $mediaCode, string $endCursor): MediaComments
+    public function getMoreMediaComments(string $mediaCode, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): MediaComments
     {
         $feed = new JsonMediaCommentsFeed($this->client, $this->session);
-        $data = $feed->fetchMoreData($mediaCode, $endCursor);
+        $data = $feed->fetchMoreData($mediaCode, $endCursor, $limit);
 
         $hydrator = new MediaCommentsHydrator();
         $hydrator->hydrateMediaComments($data);
@@ -477,10 +482,10 @@ class Api
      * @throws Exception\InstagramAuthException
      * @throws Exception\InstagramFetchException
      */
-    public function getMoreFollowers(int $id, string $endCursor): FollowerFeed
+    public function getMoreFollowers(int $id, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): FollowerFeed
     {
         $feed = new JsonFollowerDataFeed($this->client, $this->session);
-        $data = $feed->fetchMoreData($id, $endCursor);
+        $data = $feed->fetchMoreData($id, $endCursor, $limit);
 
         $hydrator = new FollowerHydrator();
         $hydrator->hydrateFollowerFeed($data);
@@ -518,10 +523,10 @@ class Api
      * @throws Exception\InstagramAuthException
      * @throws Exception\InstagramFetchException
      */
-    public function getMoreFollowings(int $id, string $endCursor): FollowingFeed
+    public function getMoreFollowings(int $id, string $endCursor, int $limit = InstagramHelper::PAGINATION_DEFAULT): FollowingFeed
     {
         $feed = new JsonFollowingDataFeed($this->client, $this->session);
-        $data = $feed->fetchMoreData($id, $endCursor);
+        $data = $feed->fetchMoreData($id, $endCursor, $limit);
 
         $hydrator = new FollowingHydrator();
         $hydrator->hydrateFollowingFeed($data);
@@ -696,10 +701,10 @@ class Api
      * @throws Exception\InstagramAuthException
      * @throws Exception\InstagramFetchException
      */
-    public function getTaggedMedias(int $userId, string $endCursor = ''): TaggedMediasFeed
+    public function getTaggedMedias(int $userId, string $endCursor = '', int $limit = 12): TaggedMediasFeed
     {
         $feed = new JsonTaggedMediasDataFeed($this->client, $this->session);
-        $data = $feed->fetchData($userId, $endCursor);
+        $data = $feed->fetchData($userId, $endCursor, $limit);
 
         $hydrator = new MediaHydrator();
         return $hydrator->hydrateTaggedMedias($data);
@@ -775,7 +780,7 @@ class Api
 
         return $hydrator->getTimelineFeed();
     }
-      
+
     /**
      * @param string $user
      *

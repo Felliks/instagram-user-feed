@@ -41,7 +41,7 @@ class LocationHydrator
         $this->location->setWebsite($data->website);
         $this->location->setPhone($data->phone);
         $this->location->setFacebookAlias($data->primary_alias_on_fb);
-        $this->location->setAddress(json_decode($data->address_json, true));
+        $this->location->setAddress(json_decode($data->address_json, true, 512, JSON_THROW_ON_ERROR));
         $this->location->setProfilePicture($data->profile_pic_url);
         $this->location->setTotalMedia($data->edge_location_to_media->count);
     }
